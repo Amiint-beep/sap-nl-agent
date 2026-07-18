@@ -1,4 +1,4 @@
-## SAP S/4HANA Natural Language Agent.
+# SAP S/4HANA Natural Language Agent.
 
 ## Context
 
