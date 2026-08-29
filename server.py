@@ -1,58 +1,54 @@
 import os
+from pathlib import Path
+
 import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+load_dotenv(Path(__file__).parent / ".env")
 
-load_dotenv()
-API_KEY = os.getenv("SAP_API_KEY") #on réucpere la clé d'api pour l'utiliser pour des requetes sap
-BASE_URL = "https://sandbox.api.sap.com/s4hanacloud/sap/opu/odata/sap"
+BASE_URL = os.getenv("SAP_BTP_BASE_URL")
+COOKIE = os.getenv("SAP_BTP_COOKIE")
+
+if not BASE_URL or not COOKIE:
+    raise RuntimeError("SAP_BTP_BASE_URL ou SAP_BTP_COOKIE absent du .env")
+
+mcp = FastMCP("sap-article-agent")
 
 
-#on créer la fastmcp instance avec son nom pour l'identifier correctement.
-mcp = FastMCP("SAP-MM-AGENT")
-@mcp.tool() #notice d'utilisation 
-def get_materials(product_group: str | None = None,
-                  product_type: str | None = None,
-                  limit: int = 4) -> list[dict]:
-    """Renvoie une liste d'articles depuis SAP.
+@mcp.tool()
+def get_materials(storage_location: str | None = None,
+                  plant: str | None = None,
+                  limit: int = 50) -> list[dict]:
+    """Renvoie les articles en stock, filtres par magasin et/ou division.
 
     Args:
-        product_group: filtre optionnel sur le groupe d'articles (ex. 'L001').
-        product_type: filtre optionnel sur le type d'article (ex. 'HAWA').
-        limit: nombre d'articles à renvoyer (défaut 10).
+        storage_location: magasin (ex. 'MP01', 'EM01', 'PF01', 'DIV1').
+        plant: division / societe (ex. '1000', '2000').
+        limit: nombre maximum d'articles renvoyes.
     """
-    #construction pour le filtre OData dynamiquement selon les paramètres.
     filters = []
-    if product_group:
-        filters.append(f"ProductGroup eq '{product_group}'")
-    if product_type:
-        filters.append(f"ProductType eq '{product_type}'")
+    if storage_location:
+        filters.append(f"StorageLocation eq '{storage_location}'")
+    if plant:
+        filters.append(f"Plant eq '{plant}'")
 
-    # Les paramètres OData.
     params = {
         "$top": str(limit),
-        "$select": "Product,ProductType,ProductGroup,BaseUnit",
-        "$format": "json",
+        "$select": "MaterialId,MaterialDescription,BaseUnit,StockQuantity,StorageLocation,Plant",
     }
     if filters:
         params["$filter"] = " and ".join(filters)
 
-    # L'appel HTTP réel vers SAP. La clé passe dans l'en-tête APIKey.
-    url = f"{BASE_URL}/API_PRODUCT_SRV/A_Product"
-    headers = {"APIKey": API_KEY, "Accept": "application/json"}
+    headers = {"Cookie": COOKIE, "Accept": "application/json"}
 
-    # try/except : pour renvoyer une erreur au lieu d'un echec
-    # on fait passer l'url construit avec base url et headers dans la requete httpx.get pour récuperer les données.
     try:
-        response = httpx.get(url, params=params, headers=headers, timeout=30)
+        response = httpx.get(f"{BASE_URL}/Article", params=params, headers=headers, timeout=30)
         response.raise_for_status()
-        
-        return response.json()["d"]["results"]
-    except httpx.HTTPStatusError as e:
-        return [{"erreur": f"SAP a renvoyé le code {e.response.status_code}"}]
+        return response.json()["value"]
     except Exception as e:
         return [{"erreur": str(e)}]
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     mcp.run()

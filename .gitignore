@@ -1,3 +1,5 @@
 .env
 __pycache__/
 .venv/
+SAP_BTP_BASE_URL=https://a4796127-12c7-4a21-ae82-e3ced4ab9c3d.abap-web.us10.hana.ondemand.com/sap/opu/odata4/sap/z_binding_article/srvd_a2x/sap/z_def_article/0001
+SAP_BTP_COOKIE=JSESSIONID=s%3A8GOqYvlE1d14Oz6DBux4C_0T5vacLgXO.DKawOrEmEYAxqQJ0jauFrwTSOrqFTXLHztnuHNwYFOs; __VCAP_ID__=88c6a152-25da-4c5c-5d6c-f9ec; __VCAP_ID_META__=secure&samesite=none
